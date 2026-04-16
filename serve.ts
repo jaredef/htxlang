@@ -72,14 +72,18 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
      ═══════════════════════════════════════════════ */
 
   /* ── Nav ── */
-  .site-nav { background: linear-gradient(var(--bg-primary), var(--bg-secondary)); padding: 0 0.75rem; display: flex; align-items: center; gap: 0.25rem; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); min-height: 3rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap; }
+  .site-nav { background: linear-gradient(var(--bg-primary), var(--bg-secondary)); padding: 0 0.75rem; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); min-height: 3rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap; }
   .brand { font-weight: 700; font-size: 1rem; text-decoration: none; color: var(--text-heading); letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0; }
   .brand-accent { color: var(--accent); }
-  .nav-links { display: flex; align-items: center; gap: 0; margin-left: auto; flex-wrap: wrap; }
-  .nav-link { color: var(--nav-link); text-decoration: none; font-size: 0.72rem; padding: 0.35rem 0.35rem; transition: opacity 0.15s; white-space: nowrap; }
-  .nav-link:hover { color: var(--nav-link-hover); }
+  .nav-right { display: flex; align-items: center; gap: 0.25rem; margin-left: auto; }
+  .hamburger { background: transparent; border: none; color: var(--nav-link); cursor: pointer; font-size: 1.2rem; padding: 0.35rem 0.5rem; border-radius: 4px; }
+  .hamburger:hover { color: var(--nav-link-hover); }
+  .nav-links { display: none; width: 100%; flex-direction: column; padding: 0.5rem 0; border-top: 1px solid var(--border-subtle); }
+  .nav-links.open { display: flex; }
+  .nav-link { color: var(--nav-link); text-decoration: none; font-size: 0.85rem; padding: 0.5rem 0.5rem; transition: opacity 0.15s; white-space: nowrap; }
+  .nav-link:hover { color: var(--nav-link-hover); background: var(--bg-hover); border-radius: 4px; }
   .nav-active { color: var(--text-heading); font-weight: 600; }
-  .nav-ext { color: var(--text-dim); font-size: 0.7rem; padding: 0.35rem 0.3rem; text-decoration: none; display: none; }
+  .nav-ext { color: var(--text-dim); font-size: 0.82rem; padding: 0.5rem 0.5rem; text-decoration: none; }
   .nav-ext:hover { color: var(--nav-link-hover); }
   .theme-toggle { background: transparent; border: none; color: var(--nav-link); cursor: pointer; padding: 0.35rem; font-size: 0.9rem; border-radius: 4px; }
   .theme-toggle:hover { color: var(--nav-link-hover); }
@@ -120,8 +124,12 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
      TABLET (600px+)
      ═══════════════════════════════════════════════ */
   @media (min-width: 600px) {
-    .site-nav { padding: 0 1.5rem; gap: 0.4rem; flex-wrap: nowrap; }
+    .hamburger { display: none; }
+    .nav-links { display: flex !important; width: auto; flex-direction: row; align-items: center; gap: 0; border-top: none; padding: 0; }
+    .nav-right { gap: 0.4rem; }
+    .site-nav { padding: 0 1.5rem; flex-wrap: nowrap; }
     .nav-link { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
+    .nav-link:hover { background: none; }
     .nav-ext { display: inline; }
     .content { padding: 2rem 1.5rem 3.5rem; }
     h1 { font-size: 1.45rem; }
@@ -156,10 +164,13 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
 <body>
 <nav class="site-nav">
   <a href="/" class="brand">htx<span class="brand-accent">lang</span></a>
-  <div class="nav-links">
+  <div class="nav-right">
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">◐</button>
+    <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+  </div>
+  <div class="nav-links" id="navLinks">
     ${navHtml}
     <a href="https://github.com/jaredef/htxlang" class="nav-ext">GitHub ↗</a>
-    <button class="theme-toggle" id="themeToggle" title="Toggle theme">◐</button>
   </div>
 </nav>
 <div class="content">
@@ -170,6 +181,10 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
   </div>
 </div>
 <script>
+  document.getElementById('hamburger').addEventListener('click', function(){
+    document.getElementById('navLinks').classList.toggle('open');
+    this.textContent = this.textContent === '☰' ? '✕' : '☰';
+  });
   document.getElementById('themeToggle').addEventListener('click', function(){
     var current = document.documentElement.getAttribute('data-theme');
     var next = current === 'light' ? 'dark' : 'light';
