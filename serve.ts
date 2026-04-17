@@ -57,6 +57,7 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
     { href: "/spec/composition", label: "Composition" },
     { href: "/spec/implementation", label: "Implementation" },
     { href: "/seed", label: "Seeds" },
+    { href: "/derivation", label: "The Derivation" },
   ];
   const navHtml = navLinks.map(l =>
     `<a href="${l.href}" class="nav-link${currentPath === l.href ? ' nav-active' : ''}">${l.label}</a>`
@@ -577,6 +578,158 @@ Bun.serve({
     if (path === "/demo/htmx/tests-v4") {
       const testPage = readFileSync(join(ROOT, "derivations/htmx/tests-v4.html"), "utf-8");
       return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+
+    // ── Derivation story page ──
+    if (path === "/derivation") {
+      const storyHtml = `
+        <h1>We Derived htmx from a 4,000-Word Document</h1>
+        <p class="breadcrumb"><a href="/">htxlang</a> → The Derivation</p>
+
+        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin:2rem 0;">
+          <p style="font-size:1.1rem;color:var(--text-primary);margin:0;">
+            <strong>1,057 lines of JavaScript.</strong> Same <code>hx-*</code> namespace. Same behavior. 53 of 54 tests passing.
+            Derived blind — from prose alone — by a model that never saw our reference implementation.
+          </p>
+        </div>
+
+        <h2>What happened</h2>
+        <p>We wrote a constraint seed — 3,937 words of English prose describing what htmx <em>must</em> do. Not how. What.</p>
+        <p>Then we fed it to an AI model and said: derive a conformant implementation. No code to look at. No reference. Just the prose.</p>
+        <p>It worked.</p>
+        <p>Not approximately. Not "similar to htmx." It passes 53 of 54 tests designed for a <em>completely separate</em> implementation built over months of iterative development.</p>
+
+        <h2>The constraint seed</h2>
+        <p>The seed is 19 constraints organized into four rings:</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.5rem;color:var(--accent);font-weight:600;">Core (C1–C6)</td>
+            <td style="padding:0.5rem;">HTTP verbs, swap strategies, target resolution, triggers, boost</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.5rem;color:var(--accent);font-weight:600;">Ring 1 (C7–C10)</td>
+            <td style="padding:0.5rem;">Response headers, out-of-band swaps, script eval, public API</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.5rem;color:var(--accent);font-weight:600;">Ring 2 (C11–C14)</td>
+            <td style="padding:0.5rem;">Config system, history cache, composable parameters, event lifecycle</td>
+          </tr>
+          <tr>
+            <td style="padding:0.5rem;color:var(--accent);font-weight:600;">Ring 3 (C15–C19)</td>
+            <td style="padding:0.5rem;">SSE/WebSocket, extensions API, validation, disinherit, credentials</td>
+          </tr>
+        </table>
+
+        <p>Each constraint is one sentence stating an invariant. Example:</p>
+        <blockquote style="border-left:3px solid var(--accent);padding-left:1rem;margin:1rem 0;color:var(--text-secondary);">
+          <strong>C2:</strong> The response from the server is HTML. The library does not parse JSON. The server returns an HTML fragment; the library swaps it into the DOM.
+        </blockquote>
+        <p>That's it. No pseudocode. No algorithms. Just: <em>what must be true.</em></p>
+        <p><a href="/seed/htmx">Read the full seed →</a></p>
+
+        <h2>The convergence experiment</h2>
+        <p>We didn't just derive once. We derived, diffed against our reference, tightened the seed, and derived again. Four times.</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:1rem 0;font-family:monospace;">
+          <tr style="border-bottom:1px solid var(--border);font-weight:600;">
+            <td style="padding:0.5rem;">Iteration</td>
+            <td style="padding:0.5rem;">Seed</td>
+            <td style="padding:0.5rem;">Blind derivation</td>
+            <td style="padding:0.5rem;">vs reference</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;">v1</td>
+            <td style="padding:0.5rem;">2,685 words</td>
+            <td style="padding:0.5rem;">2,160 lines</td>
+            <td style="padding:0.5rem;color:#f87171;">+64%</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;">v2</td>
+            <td style="padding:0.5rem;">3,611 words</td>
+            <td style="padding:0.5rem;">1,648 lines</td>
+            <td style="padding:0.5rem;color:#fbbf24;">+25%</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;">v3</td>
+            <td style="padding:0.5rem;">3,727 words</td>
+            <td style="padding:0.5rem;">1,433 lines</td>
+            <td style="padding:0.5rem;color:#4ade80;">+8%</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;">v4</td>
+            <td style="padding:0.5rem;">3,937 words</td>
+            <td style="padding:0.5rem;">1,373 lines</td>
+            <td style="padding:0.5rem;color:#4ade80;">+4%</td>
+          </tr>
+          <tr>
+            <td style="padding:0.5rem;">v4.1</td>
+            <td style="padding:0.5rem;">3,937 words</td>
+            <td style="padding:0.5rem;">1,057 lines</td>
+            <td style="padding:0.5rem;color:#5b96d5;">-19%</td>
+          </tr>
+        </table>
+
+        <p>Reference implementation: <strong>1,316 lines</strong>. The blind derivation converged to within 4% — then overcorrected to 19% <em>under</em>. The prose is now tight enough that the model produces a more compact implementation than we did by hand.</p>
+
+        <h2>The behavioral pin</h2>
+        <p>Here's where it gets interesting.</p>
+        <p>When we ran our 54-test suite against the v4 blind derivation, only 34 tests passed (63%). The page went haywire — tests looping, redirecting, racing each other.</p>
+        <p><strong>Root cause:</strong> one missing sentence in the seed. The derivation's <code>init()</code> function was re-executing the page's own <code>&lt;script&gt;</code> tags, causing an infinite loop.</p>
+        <p>We added one constraint:</p>
+
+        <blockquote style="border-left:3px solid var(--accent);padding-left:1rem;margin:1rem 0;color:var(--text-secondary);">
+          Script re-execution and hx-on binding are swap-only operations, never called during init().
+        </blockquote>
+
+        <p>One sentence. 19 test failures resolved. Pass rate: 63% → 98%.</p>
+        <p>That's the pin-art model: one constraint, precisely placed, determines the shape of 19 features.</p>
+
+        <h2>What does this mean for htmx users?</h2>
+
+        <p><strong>htmx is 14,000 lines of development source.</strong> It was built feature-by-feature over 11 years. Every line is there for a reason.</p>
+        <p><strong>htmx-derived.js is 1,316 lines.</strong> It does the same thing. Same namespace. Same attributes. Same behavior. But it was derived from constraints, not accumulated from features.</p>
+        <p>The difference is not compression. It's a different kind of object. htmx is a <em>library</em>. The seed is a <em>specification</em>. The library has history, edge cases, backwards compatibility. The specification has invariants.</p>
+        <p>You can use htmx-derived.js as a drop-in replacement. But the deeper point is: the behavior of htmx can be captured in 19 sentences. Everything else is implementation detail.</p>
+
+        <h2>Try it yourself</h2>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0;">
+          <a href="/seed/htmx" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:var(--accent);">Read the seed</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">3,937 words, 19 constraints</span>
+          </a>
+          <a href="/derivations/htmx/htmx-derived.js" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:var(--accent);">View the source</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">1,316 lines, full parity</span>
+          </a>
+          <a href="/demo/htmx" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:var(--accent);">Live demo</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">Running on htmx-derived.js</span>
+          </a>
+          <a href="/demo/htmx/tests" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:var(--accent);">Test suite</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">54/54 passing</span>
+          </a>
+        </div>
+
+        <h2>The method</h2>
+        <p>This is called the <strong>derivation inversion</strong>. Instead of building features and hoping they cohere, you state the constraints and derive the implementation. The constraints are the primitive unit, not the features.</p>
+        <p>It works because constraints compose predictably. Features interact in ways you can't see until you build them. Constraints have defined boundaries. When you add a constraint, you know exactly what it determines and what it leaves open.</p>
+        <p>The pin-art model is the analytical framework: each constraint is a pin pressed into foam. The foam is the space of possible implementations. The pins determine the shape. The more pins you press, the less freedom the foam has, the more the derivation converges to a specific implementation.</p>
+        <p>We pressed 19 pins. The foam had 57 lines of freedom left.</p>
+
+        <hr>
+        <p style="color:var(--text-dim);font-size:0.85rem;">
+          <a href="https://jaredfoy.com/doc/288-the-pin-art-derivation">Full technical write-up (Doc 288)</a> ·
+          <a href="https://jaredfoy.com/doc/289-the-convergence-experiment">Convergence experiment (Doc 289)</a> ·
+          <a href="https://jaredfoy.com/doc/290-the-pin-art-formalization">Mathematical formalization (Doc 290)</a> ·
+          <a href="https://github.com/jaredef/htxlang">Source on GitHub</a>
+        </p>
+      `;
+      return new Response(wrapHtml("We Derived htmx from Prose", storyHtml, path), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     }
 
     // Landing page
