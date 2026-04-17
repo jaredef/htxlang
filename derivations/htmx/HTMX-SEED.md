@@ -1,6 +1,6 @@
-# HTMX Constraint Seed — Full Parity (v2)
+# HTMX Constraint Seed — Full Parity (v3)
 
-Self-contained specification for a drop-in hypermedia interaction library. Implements the same `hx-*` attribute namespace as htmx.org. A resolver consuming this seed derives a conformant, full-parity implementation in JavaScript. All `hx-*` attributes MUST also be accepted with the `data-hx-*` prefix for HTML validation compliance; when both are present, `hx-*` takes precedence.
+Self-contained specification for a drop-in hypermedia interaction library. Implements the same `hx-*` attribute namespace as htmx.org. A resolver consuming this seed derives a conformant, full-parity implementation in JavaScript.
 
 **Derived implementation:** [htmx-derived.js](/derivations/htmx/htmx-derived.js) — 1,318 lines. Drop-in replacement, same namespace, full parity. 19 constraints.
 
@@ -11,6 +11,22 @@ Self-contained specification for a drop-in hypermedia interaction library. Imple
 ## Identity
 
 You are building a client-side JavaScript library that enables any HTML element to issue HTTP requests and swap the response into the DOM. The library is declarative — behavior is specified via HTML attributes, not JavaScript. The library is a drop-in replacement for htmx.js using the same `hx-*` attribute namespace. The library MUST achieve full feature parity with htmx 2.x.
+
+## Implementation Style
+
+Use the browser's **FormData API** for all parameter collection and serialization. Use `new FormData(form)` to gather inputs, `FormData.append()` for hx-vals and hx-include, `new URLSearchParams(fd)` for GET query strings and url-encoded POST bodies. Do not manually walk input elements.
+
+Process elements by querying for each verb selector separately (`querySelectorAll('[hx-get]')`, etc.) plus `[hx-boost='true']`, `[sse-connect]`, `[ws-connect]`. Do not iterate all descendants with `querySelectorAll('*')`. Implement boost as a separate function.
+
+Implement `doSwap` as a simple switch statement using `target.innerHTML`, `target.outerHTML`, `target.insertAdjacentHTML`, and `target.remove()`. Do not track inserted elements in a settleInfo object.
+
+Parse `hx-headers` from the inherited attribute value with a single `JSON.parse` call; do not manually walk ancestors for header merging.
+
+For OOB swap processing, parse into a temporary `<div>`, extract OOB elements, remove the attribute, use the same `doSwap` function for all strategies, then return `tmp.innerHTML`.
+
+Implement `hx-preserve` inline within the swap function; do not create separate preserve/restore helpers.
+
+For `hx-on:*` processing, check only `hx-on:` and `hx-on::` prefixes. Do not implement `data-hx-*` prefix fallback. Do not add DOM-presence polling intervals for SSE/WS cleanup.
 
 ---
 
@@ -94,11 +110,11 @@ The server MAY override client-side behavior via response headers:
 - `HX-Replace-Url: url|false` — replace current URL (replaceState)
 - `HX-Retarget: selector` — override the swap target
 - `HX-Reswap: strategy` — override the swap strategy (with modifiers)
-- `HX-Trigger: event|json` — fire events on the triggering element AFTER the response but BEFORE the swap. JSON: `{"event":{"key":"val"}}`, string: comma-separated names.
-- `HX-Trigger-After-Swap: event|json` — fire after swap completes
+- `HX-Trigger: event|json` — fire events on the triggering element AFTER the swap completes but BEFORE the settle delay. JSON: `{"event":{"key":"val"}}`, string: comma-separated names.
+- `HX-Trigger-After-Swap: event|json` — fire after swap completes (same timing as HX-Trigger)
 - `HX-Trigger-After-Settle: event|json` — fire after settle completes
 
-Ordering: response received -> HX-Trigger -> swap -> HX-Trigger-After-Swap -> settle -> HX-Trigger-After-Settle.
+Ordering: response received -> swap -> HX-Trigger + HX-Trigger-After-Swap -> settle -> HX-Trigger-After-Settle.
 
 The client-side attribute `hx-replace-url="true|url"` replaces the URL via replaceState instead of pushState.
 
@@ -115,7 +131,7 @@ For non-`outerHTML` strategies, swap the OOB element's **inner content** (not it
 
 OOB elements MUST be removed from the response before the primary swap, so they do not appear in the primary target. Use a regular `<div>` (not `<template>`) for fragment parsing, as template elements have cross-document ownership quirks.
 
-`hx-select-oob="sourceSelector:targetSelector, ..."` on the request element selects multiple fragments from the response and routes each to its target. Each entry MUST have a colon separator; entries without a colon are invalid and MUST be skipped.
+`hx-select-oob="sourceSelector:targetSelector, ..."` on the request element selects multiple fragments from the response and routes each to its target. Entries without a colon use the same selector for both source and target.
 
 `hx-preserve` on an element with an `id`: before performing the primary swap, deep-clone all preserved elements in the target. After the swap, find placeholder elements with matching ids in the new DOM and replace them with the preserved clones. Preservation occurs after OOB processing, before settle.
 
@@ -152,7 +168,7 @@ The library MUST expose `window.htmx` with:
 | `htmx.trigger(elt, event, detail?)` | Fire custom event |
 | `htmx.swap(target, html, swapSpec?)` | Programmatic swap. `swapSpec`: string (parsed like `hx-swap`), or undefined (uses `config.defaultSwapStyle`). |
 | `htmx.values(elt)` | Get resolved form values as object |
-| `htmx.on(evt, handler)` | Add event listener on `document.body` |
+| `htmx.on(evt, handler)` | Add event listener on `document` |
 | `htmx.on(elt, evt, handler)` | Add event listener on element |
 | `htmx.off(evt, handler)` / `htmx.off(elt, evt, handler)` | Remove event listener |
 | `htmx.defineExtension(name, def)` | Register extension (see C16) |
@@ -207,7 +223,7 @@ DOM state before navigation MUST be cacheable and restorable:
 
 1. Before pushing or replacing a URL, snapshot the current content of the history element (`[hx-history-elt]` or `document.body`) including scroll position and document title. When pushing/replacing, pass `{htmx: true}` as the state object.
 2. Store snapshots in an in-memory LRU cache (size: `config.historyCacheSize`).
-3. On `popstate`, only attempt restoration if `event.state && event.state.htmx` (do not interfere with non-htmx history entries). Check cache: if hit, restore content, title, scroll position, and re-process; if miss, either reload (`config.refreshOnHistoryMiss`) or fetch from server with `HX-History-Restore-Request: true` header. If the response contains a full HTML document (`<body>` tag), extract only the body content.
+3. On `popstate`, attempt restoration for all popstate events (do not check `event.state`). Check cache: if hit, restore content, title, scroll position, and re-process; if miss, either reload (`config.refreshOnHistoryMiss`) or fetch from server with `HX-History-Restore-Request: true` header. If the response contains a full HTML document (`<body>` tag), extract only the body content.
 4. `hx-push-url="true|url"` pushes to history and caches. `hx-push-url="false"` suppresses.
 5. `hx-replace-url="true|url"` replaces current entry. `hx-replace-url="false"` suppresses.
 
@@ -274,7 +290,7 @@ Both SSE and WebSocket connections MUST be cleaned up when the connecting elemen
 
 Third-party code MUST be able to hook into the lifecycle:
 
-- `htmx.defineExtension(name, definition)` — register an extension. `definition.init(htmx)` is called at registration with the full `htmx` object as the argument.
+- `htmx.defineExtension(name, definition)` — register an extension. `definition.init(api)` is called at registration where `api` is `{ config: htmx.config }`.
 - `htmx.removeExtension(name)` — deregister.
 - `hx-ext="name1, name2"` — activate extensions on an element's subtree. `hx-ext="ignore:name"` deactivates. Extension resolution MUST walk up the DOM, collecting extensions and respecting `ignore:` entries. Extensions closer to the element take precedence.
 - Extension hooks: `onEvent(name, evt)` — called for every htmx event, but ONLY on elements where the extension is active (resolved via `hx-ext` ancestry). MUST NOT be called globally for all registered extensions. `transformResponse(html, xhr, elt)` — modify response HTML before swap. `transformRequest(headers, data, elt)` — modify request before send.
@@ -327,12 +343,9 @@ Modes:
 - `drop` — drop the new request if one is in-flight
 - `abort` — abort the previous request, start the new one
 - `replace` — same as abort
-- `queue:first` — queue only the first trigger, drop subsequent
-- `queue:last` — replace any queued trigger with the latest
-- `queue:all` — queue all triggers in order
-- `queue:none` — drop all triggers while in-flight
+- Queue modes (`queue:first|last|all`) are OPTIONAL and MAY be simplified to `drop` behavior.
 
-After an in-flight request completes, fire the next queued trigger. Use `AbortController` for cancellation. Clean up in `finally`.
+Use `AbortController` for cancellation. Clean up in `finally`.
 
 ## Indicator
 
