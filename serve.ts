@@ -569,9 +569,13 @@ Bun.serve({
       return new Response(page, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
-    // ── Test suite page ──
+    // ── Test suite pages ──
     if (path === "/demo/htmx/tests") {
       const testPage = readFileSync(join(ROOT, "derivations/htmx/tests.html"), "utf-8");
+      return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+    if (path === "/demo/htmx/tests-v4") {
+      const testPage = readFileSync(join(ROOT, "derivations/htmx/tests-v4.html"), "utf-8");
       return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
