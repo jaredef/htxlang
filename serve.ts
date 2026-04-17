@@ -430,6 +430,93 @@ Bun.serve({
       return new Response(`<p style="color:var(--accent);">Hello, <strong>${name}</strong>! This was a POST request. The form data was sent as FormData and the response is an HTML fragment.</p>`, { headers: { "Content-Type": "text/html" } });
     }
 
+    // ── Test API endpoints (for htmx-derived.js test suite) ──
+    if (path === "/api/test/echo") {
+      const method = req.method;
+      const params: Record<string, string> = {};
+      url.searchParams.forEach((v, k) => { params[k] = v; });
+      let bodyParams: Record<string, string> = {};
+      if (method !== "GET" && method !== "HEAD") {
+        try {
+          const fd = await req.formData();
+          fd.forEach((v, k) => { bodyParams[k] = String(v); });
+        } catch { try { bodyParams = await req.json(); } catch {} }
+      }
+      const headers: Record<string, string> = {};
+      req.headers.forEach((v, k) => { headers[k] = v; });
+      return new Response(
+        `<div id="echo" data-method="${method}" data-params='${JSON.stringify(params)}' data-body='${JSON.stringify(bodyParams)}' data-headers='${JSON.stringify(headers)}'>${method} ${url.pathname}${url.search}</div>`,
+        { headers: { "Content-Type": "text/html" } }
+      );
+    }
+    if (path === "/api/test/swap") {
+      const style = url.searchParams.get("style") || "innerHTML";
+      if (style === "outerHTML") return new Response(`<div id="swap-target" class="swapped">outerHTML done</div>`, { headers: { "Content-Type": "text/html" } });
+      if (style === "beforeend") return new Response(`<p class="appended">appended</p>`, { headers: { "Content-Type": "text/html" } });
+      if (style === "delete") return new Response(``, { headers: { "Content-Type": "text/html" } });
+      return new Response(`<p class="replaced">innerHTML done</p>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/test/oob") {
+      return new Response(
+        `<p>Primary content</p><div id="oob-target" hx-swap-oob="true"><p>OOB swapped!</p></div>`,
+        { headers: { "Content-Type": "text/html" } }
+      );
+    }
+    if (path === "/api/test/oob-strategy") {
+      return new Response(
+        `<p>Primary</p><div id="oob-strat" hx-swap-oob="beforeend:#oob-append-target"><p class="oob-appended">appended via OOB</p></div>`,
+        { headers: { "Content-Type": "text/html" } }
+      );
+    }
+    if (path === "/api/test/script") {
+      return new Response(`<p id="script-result">script ran</p><script>document.getElementById('script-flag').textContent='executed';</script>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/test/title") {
+      return new Response(`<title>Test Title Updated</title><p>title changed</p>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/test/headers") {
+      const which = url.searchParams.get("h") || "trigger";
+      const respHeaders: Record<string, string> = { "Content-Type": "text/html" };
+      if (which === "retarget") respHeaders["HX-Retarget"] = "#retarget-dest";
+      if (which === "reswap") respHeaders["HX-Reswap"] = "outerHTML";
+      if (which === "trigger") respHeaders["HX-Trigger"] = "testEvent";
+      if (which === "push-url") respHeaders["HX-Push-Url"] = "/test/pushed";
+      if (which === "multi") {
+        respHeaders["HX-Trigger"] = JSON.stringify({ customEvt: { val: 42 } });
+        respHeaders["HX-Trigger-After-Swap"] = "afterSwapEvt";
+        respHeaders["HX-Trigger-After-Settle"] = "afterSettleEvt";
+      }
+      return new Response(`<p>header response</p>`, { headers: respHeaders });
+    }
+    if (path === "/api/test/slow") {
+      await new Promise(r => setTimeout(r, 500));
+      return new Response(`<p>slow response</p>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path.startsWith("/api/test/status/")) {
+      const code = parseInt(path.split("/").pop() || "200");
+      return new Response(`<p>status ${code}</p>`, { status: code, headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/test/sse") {
+      let closed = false;
+      const stream = new ReadableStream({
+        async start(controller) {
+          const send = (event: string, data: string) => {
+            if (closed) return;
+            controller.enqueue(new TextEncoder().encode(`event: ${event}\ndata: ${data}\n\n`));
+          };
+          send("msg", "<p class='sse-msg'>SSE message 1</p>");
+          await new Promise(r => setTimeout(r, 200));
+          send("msg", "<p class='sse-msg'>SSE message 2</p>");
+          await new Promise(r => setTimeout(r, 200));
+          send("done", "<p class='sse-done'>SSE complete</p>");
+          await new Promise(r => setTimeout(r, 100));
+          controller.close();
+        },
+        cancel() { closed = true; },
+      });
+      return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" } });
+    }
+
     // ── Demo page ──
     if (path === "/demo/htmx") {
       const demoHtml = `
@@ -480,6 +567,12 @@ Bun.serve({
       const page = wrapHtml("htmx-derived.js Demo", demoHtml, path)
         .replace("</head>", `<script src="/derivations/htmx/htmx-derived.js"></script>\n</head>`);
       return new Response(page, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+
+    // ── Test suite page ──
+    if (path === "/demo/htmx/tests") {
+      const testPage = readFileSync(join(ROOT, "derivations/htmx/tests.html"), "utf-8");
+      return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
     // Landing page
