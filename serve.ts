@@ -435,6 +435,17 @@ Bun.serve({
       }
     }
 
+    // Derivation files (htmx-derived.js, seeds)
+    if (path.startsWith("/derivations/")) {
+      const filePath = join(ROOT, path);
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        const ext = path.split(".").pop();
+        const mime = ext === "js" ? "application/javascript" : ext === "md" ? "text/plain; charset=utf-8" : "application/octet-stream";
+        return new Response(file, { headers: { "Content-Type": mime, "Cache-Control": "public, max-age=3600" } });
+      }
+    }
+
     // Static files (OG images)
     if (path.startsWith("/og/")) {
       const filePath = join(ROOT, "public", path);
