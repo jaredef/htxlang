@@ -359,7 +359,7 @@ Modes:
 - `replace` — same as abort
 - Queue modes (`queue:first|last|all`) are OPTIONAL and MAY be simplified to `drop` behavior.
 
-Use `AbortController` for cancellation. Clean up in `finally`.
+Use `AbortController` for cancellation. Request cleanup (indicator class removal, disabled-elt restoration, sync state clearing) MUST be guaranteed regardless of success, failure, or exception. Use the `.finally()` clause of the fetch promise chain — not manual cleanup calls scattered in `.then()` and `.catch()`. This is a compositional constraint: other constraints (OOB processing, script evaluation) add code that runs between the request and cleanup. If any of that code throws, `.finally()` guarantees cleanup still runs. Manual cleanup calls do not.
 
 ## Indicator
 
