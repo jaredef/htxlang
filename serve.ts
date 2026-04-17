@@ -579,6 +579,10 @@ Bun.serve({
       const testPage = readFileSync(join(ROOT, "derivations/htmx/tests-v4.html"), "utf-8");
       return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
+    if (path === "/demo/htmx/tests-v5") {
+      const testPage = readFileSync(join(ROOT, "derivations/htmx/tests-v5.html"), "utf-8");
+      return new Response(testPage, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
 
     // ── Derivation story page ──
     if (path === "/derivation") {
