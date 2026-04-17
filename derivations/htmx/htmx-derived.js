@@ -372,7 +372,7 @@
     var process = function (el) {
       Array.from(el.attributes).forEach(function (attr) {
         if (attr.name.startsWith("hx-on:") || attr.name.startsWith("hx-on::")) {
-          var evtName = attr.name.startsWith("hx-on::") ? attr.name.slice(7) : attr.name.slice(6);
+          var evtName = attr.name.startsWith("hx-on::") ? "htmx:" + attr.name.slice(7) : attr.name.slice(6);
           if (config.allowEval) {
             el.addEventListener(evtName, new Function("event", attr.value));
           }

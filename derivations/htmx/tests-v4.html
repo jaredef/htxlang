@@ -254,9 +254,21 @@
     // C6: Boost
     // ════════════════════════════════════════════
     try {
-      // Test boost API existence without creating any links (v4 boost may auto-navigate)
-      report("ring-core", "C6.1", "Boost function exists", typeof htmx.process === "function");
-    } catch (e) { report("ring-core", "C6.1", "Boost function exists", false, String(e)); }
+      reset();
+      sb.innerHTML = '<div hx-boost="true"><a id="c6link" href="/api/test/swap" hx-target="#c6out">link</a></div><div id="c6out"></div>';
+      htmx.process(sb);
+      // Intercept the AJAX request by listening for htmx:beforeRequest
+      var boostRequestFired = false;
+      sb.querySelector("#c6link").addEventListener("htmx:beforeRequest", function (e) {
+        boostRequestFired = true;
+        e.preventDefault(); // cancel the actual fetch — we just want to know it triggered
+      });
+      // Add capture-phase preventDefault to block any residual navigation
+      sb.querySelector("#c6link").addEventListener("click", function (e) { e.preventDefault(); }, true);
+      click(sb.querySelector("#c6link"));
+      await new Promise(function (r) { setTimeout(r, 300); });
+      report("ring-core", "C6.1", "Boosted link AJAX", boostRequestFired);
+    } catch (e) { report("ring-core", "C6.1", "Boosted link AJAX", false, String(e)); }
 
     try {
       reset();

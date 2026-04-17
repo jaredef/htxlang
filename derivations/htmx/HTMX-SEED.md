@@ -122,11 +122,11 @@ The server MAY override client-side behavior via response headers:
 - `HX-Replace-Url: url|false` — replace current URL (replaceState)
 - `HX-Retarget: selector` — override the swap target
 - `HX-Reswap: strategy` — override the swap strategy (with modifiers)
-- `HX-Trigger: event|json` — fire events on the triggering element AFTER the swap completes but BEFORE the settle delay. JSON: `{"event":{"key":"val"}}`, string: comma-separated names.
-- `HX-Trigger-After-Swap: event|json` — fire after swap completes (same timing as HX-Trigger)
-- `HX-Trigger-After-Settle: event|json` — fire after settle completes
+- `HX-Trigger: event|json` — fire events on the triggering element AFTER the swap but BEFORE `HX-Trigger-After-Swap`. JSON: `{"event":{"key":"val"}}`, string: comma-separated names.
+- `HX-Trigger-After-Swap: event|json` — fire AFTER `HX-Trigger`, at the end of the swap phase
+- `HX-Trigger-After-Settle: event|json` — fire after the settle delay completes
 
-Ordering: response received -> swap -> HX-Trigger + HX-Trigger-After-Swap -> settle -> HX-Trigger-After-Settle.
+These are three DISTINCT phases — do NOT fire `HX-Trigger` and `HX-Trigger-After-Swap` at the same time. Ordering: response received -> swap -> `HX-Trigger` -> `htmx:afterSwap` -> `HX-Trigger-After-Swap` -> settle delay -> `HX-Trigger-After-Settle` -> `htmx:afterSettle`.
 
 The client-side attribute `hx-replace-url="true|url"` replaces the URL via replaceState instead of pushState.
 
@@ -146,6 +146,8 @@ OOB elements MUST be removed from the response before the primary swap, so they 
 `hx-select-oob="sourceSelector:targetSelector, ..."` on the request element selects multiple fragments from the response and routes each to its target. Entries without a colon use the same selector for both source and target.
 
 `hx-preserve` on an element with an `id`: before performing the primary swap, deep-clone all preserved elements in the target. After the swap, find placeholder elements with matching ids in the new DOM and replace them with the preserved clones. Preservation occurs after OOB processing, before settle.
+
+After each OOB swap completes, call `process()` on the newly swapped content to activate any `hx-*` attributes within it.
 
 Both SSE and WebSocket incoming content MUST be scanned for OOB swap elements before performing the primary swap.
 
@@ -189,7 +191,7 @@ The library MUST expose `window.htmx` with:
 | `htmx.logAll()` / `htmx.logNone()` | Enable/disable verbose event logging |
 | `htmx.logger` | Writable property — set to a function to receive log messages |
 | `htmx.config` | Configuration object (see C11) |
-| `htmx.version` | Version string |
+| `htmx.version` | Version string, set to `"derived-2.0.0"` |
 
 `htmx._` MAY expose internal functions for extension authors: `fire`, `getAttr`, `resolveTarget`, `doSwap`, `processScripts`. This is not a stable API.
 
