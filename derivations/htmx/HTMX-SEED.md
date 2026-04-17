@@ -215,6 +215,8 @@ The set of parameters in a request MUST be composable from multiple sources:
    - `not param1, param2` — exclude named params
    - `param1, param2` — include only named params
 5. **hx-prompt="message":** Show `prompt()` dialog. Include the response as `HX-Prompt` header. Cancel on null.
+6. **hx-headers='{"key":"val"}':** Extra headers to include in the request (JSON string, merged into request headers).
+7. **hx-disabled-elt="selector":** Disable matched elements during the request (set `disabled = true`); re-enable in the `finally` block.
 
 ### C14 — Complete Lifecycle Event Stream
 
