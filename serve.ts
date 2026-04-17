@@ -8,13 +8,34 @@ import { resolve, join } from "node:path";
 const PORT = 3002;
 const ROOT = import.meta.dir;
 
+// Map .md file paths to clean site routes
+const linkRewrites: Record<string, string> = {
+  "spec/plan.md": "/spec/plan",
+  "spec/htxlang-v1.md": "/spec",
+  "spec/implementation.md": "/spec/implementation",
+  "spec/reference-profile.md": "/spec/reference-profile",
+  "spec/composition.md": "/spec/composition",
+  "seed/presto-seed.md": "/seed",
+  "seed/server-seed.md": "/seed/server",
+  "docs/architecture.md": "/docs/architecture",
+  "docs/thinking-in-presto.md": "/docs/thinking",
+  "../seed/presto-seed.md": "/seed",
+  "../seed/server-seed.md": "/seed/server",
+  "README.md": "/",
+};
+
 function renderMarkdown(md: string): string {
   const result = spawnSync("cmark-gfm", ["--extension", "table", "--extension", "autolink", "--unsafe"], {
     input: Buffer.from(md),
     stdout: "pipe",
     stderr: "pipe",
   });
-  return result.stdout.toString("utf-8");
+  let html = result.stdout.toString("utf-8");
+  // Rewrite .md links to clean site routes
+  for (const [mdPath, route] of Object.entries(linkRewrites)) {
+    html = html.split(`href="${mdPath}"`).join(`href="${route}"`);
+  }
+  return html;
 }
 
 function wrapHtml(title: string, body: string, currentPath: string): string {
