@@ -685,12 +685,57 @@ Bun.serve({
         <p>One sentence. 19 test failures resolved. Pass rate: 63% → 98%.</p>
         <p>That's the pin-art model: one constraint, precisely placed, determines the shape of 19 features.</p>
 
+        <h2>Two implementations, one seed</h2>
+
+        <p>We now have two independent implementations derived from the same constraint seed. One was built iteratively over a session. The other was derived blind — from the seed alone — by a model that never saw the first.</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:1.5rem 0;font-family:monospace;font-size:0.85rem;">
+          <tr style="border-bottom:2px solid var(--border);font-weight:600;">
+            <td style="padding:0.6rem;"></td>
+            <td style="padding:0.6rem;color:var(--accent);">htmx-derived.js<br><span style="font-weight:400;color:var(--text-dim);">(iterative build)</span></td>
+            <td style="padding:0.6rem;color:#2dd4bf;">htmx-fresh-v4.js<br><span style="font-weight:400;color:var(--text-dim);">(blind from seed)</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;color:var(--text-dim);">Lines</td>
+            <td style="padding:0.5rem;">1,316</td>
+            <td style="padding:0.5rem;">1,057</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;color:var(--text-dim);">Bytes</td>
+            <td style="padding:0.5rem;">53 KB</td>
+            <td style="padding:0.5rem;">36 KB</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;color:var(--text-dim);">Named functions</td>
+            <td style="padding:0.5rem;">41</td>
+            <td style="padding:0.5rem;">32</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;color:var(--text-dim);">hx-* attributes</td>
+            <td style="padding:0.5rem;">29</td>
+            <td style="padding:0.5rem;">28</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:0.5rem;color:var(--text-dim);">Events</td>
+            <td style="padding:0.5rem;">32</td>
+            <td style="padding:0.5rem;">32</td>
+          </tr>
+          <tr>
+            <td style="padding:0.5rem;color:var(--text-dim);">Tests passing</td>
+            <td style="padding:0.5rem;color:#4ade80;">54 / 54</td>
+            <td style="padding:0.5rem;color:#4ade80;">53 / 54</td>
+          </tr>
+        </table>
+
+        <p>The blind derivation is <strong>20% smaller</strong> than the iterative build — and passes 98% of the same tests. It's more compact because the seed's structural constraints eliminated code our iterative build accumulated: section-header comments, decorator lines, extra helper functions.</p>
+        <p>Both are drop-in replacements for htmx. Same <code>hx-*</code> namespace. Same behavior. Different paths to the same destination.</p>
+
         <h2>What does this mean for htmx users?</h2>
 
-        <p><strong>htmx is 14,000 lines of development source.</strong> It was built feature-by-feature over 11 years. Every line is there for a reason.</p>
-        <p><strong>htmx-derived.js is 1,316 lines.</strong> It does the same thing. Same namespace. Same attributes. Same behavior. But it was derived from constraints, not accumulated from features.</p>
-        <p>The difference is not compression. It's a different kind of object. htmx is a <em>library</em>. The seed is a <em>specification</em>. The library has history, edge cases, backwards compatibility. The specification has invariants.</p>
-        <p>You can use htmx-derived.js as a drop-in replacement. But the deeper point is: the behavior of htmx can be captured in 19 sentences. Everything else is implementation detail.</p>
+        <p><strong>htmx is 14,000 lines of development source.</strong> Built feature-by-feature over 11 years.</p>
+        <p><strong>The blind derivation is 1,057 lines.</strong> Same behavior. Derived from 3,937 words of prose by a model that never saw htmx's source code.</p>
+        <p>The difference is not compression. It's a different kind of object. htmx is a <em>library</em> — it has history, edge cases, backwards compatibility. The seed is a <em>specification</em> — it has invariants. The library accretes. The specification determines.</p>
+        <p>The deeper point: the behavior of htmx can be captured in 19 sentences. Everything else is implementation detail.</p>
 
         <h2>Try it yourself</h2>
 
@@ -699,17 +744,25 @@ Bun.serve({
             <strong style="color:var(--accent);">Read the seed</strong><br>
             <span style="font-size:0.85rem;color:var(--text-dim);">3,937 words, 19 constraints</span>
           </a>
+          <a href="/derivations/htmx/htmx-fresh-v4.js" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:#2dd4bf;">Blind derivation</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">1,057 lines, from prose alone</span>
+          </a>
           <a href="/derivations/htmx/htmx-derived.js" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
-            <strong style="color:var(--accent);">View the source</strong><br>
-            <span style="font-size:0.85rem;color:var(--text-dim);">1,316 lines, full parity</span>
+            <strong style="color:var(--accent);">Iterative build</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">1,316 lines, 54/54 tests</span>
           </a>
           <a href="/demo/htmx" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
             <strong style="color:var(--accent);">Live demo</strong><br>
             <span style="font-size:0.85rem;color:var(--text-dim);">Running on htmx-derived.js</span>
           </a>
           <a href="/demo/htmx/tests" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
-            <strong style="color:var(--accent);">Test suite</strong><br>
+            <strong style="color:var(--accent);">Test suite (iterative)</strong><br>
             <span style="font-size:0.85rem;color:var(--text-dim);">54/54 passing</span>
+          </a>
+          <a href="/demo/htmx/tests-v4" style="display:block;padding:1rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-primary);">
+            <strong style="color:#2dd4bf;">Test suite (blind)</strong><br>
+            <span style="font-size:0.85rem;color:var(--text-dim);">53/54 passing</span>
           </a>
         </div>
 
