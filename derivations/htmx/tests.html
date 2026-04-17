@@ -257,16 +257,19 @@
       reset();
       sb.innerHTML = '<div hx-boost="true"><a id="c6link" href="/api/test/swap" hx-target="#c6out">link</a></div><div id="c6out"></div>';
       htmx.process(sb);
+      // Capture phase: prevent navigation but let event continue to boost handler
+      sb.querySelector("#c6link").addEventListener("click", function (e) {
+        e.preventDefault();
+      }, true);
       click(sb.querySelector("#c6link"));
-      await waitFor(function () { return sb.querySelector("#c6out .replaced") || sb.querySelector(".replaced"); });
-      report("ring-core", "C6.1", "Boosted link AJAX", true);
+      await waitFor(function () { return sb.querySelector("#c6out .replaced") || sb.querySelector("#c6out p"); });
+      report("ring-core", "C6.1", "Boosted link AJAX", sb.querySelector("#c6link")._htmxBoosted === true);
     } catch (e) { report("ring-core", "C6.1", "Boosted link AJAX", false, String(e)); }
 
     try {
       reset();
       sb.innerHTML = '<div hx-boost="true"><a id="c6no" href="/api/test/swap" hx-boost="false">no boost</a></div><div id="c6nout"></div>';
       htmx.process(sb);
-      // hx-boost="false" should NOT be intercepted — we can verify by checking _htmxBoosted is not set
       report("ring-core", "C6.2", "hx-boost=false opt-out", !sb.querySelector("#c6no")._htmxBoosted);
     } catch (e) { report("ring-core", "C6.2", "hx-boost=false opt-out", false, String(e)); }
 
@@ -347,12 +350,12 @@
     // ════════════════════════════════════════════
     try {
       reset();
-      window.__testScriptRan = false;
-      sb.innerHTML = '<button id="c9btn" hx-get="/api/test/script" hx-target="#c9out">go</button><div id="c9out"><span id="script-flag">not executed</span></div>';
+      // script-flag is OUTSIDE the swap target so it survives the innerHTML swap
+      sb.innerHTML = '<span id="script-flag">not executed</span><button id="c9btn" hx-get="/api/test/script" hx-target="#c9out">go</button><div id="c9out"></div>';
       htmx.process(sb);
       click(sb.querySelector("#c9btn"));
-      await waitFor(function () { return sb.querySelector("#script-flag").textContent === "executed"; });
-      report("ring-1", "C9.1", "Script tag execution", sb.querySelector("#script-flag").textContent === "executed");
+      await waitFor(function () { return document.getElementById("script-flag").textContent === "executed"; });
+      report("ring-1", "C9.1", "Script tag execution", document.getElementById("script-flag").textContent === "executed");
     } catch (e) { report("ring-1", "C9.1", "Script tag execution", false, String(e)); }
 
     try {

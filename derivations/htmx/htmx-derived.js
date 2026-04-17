@@ -293,38 +293,37 @@
   // C8: Out-of-band swaps
   // ══════════════════════════════════════════════════════════════
   function processOOBSwaps(html) {
-    var tmp = document.createElement("template");
+    var tmp = document.createElement("div");
     tmp.innerHTML = html;
-    var frag = tmp.content;
-    var oobEls = frag.querySelectorAll("[hx-swap-oob]");
+    var oobEls = tmp.querySelectorAll("[hx-swap-oob]");
     var removed = [];
     oobEls.forEach(function (oobEl) {
       var oobVal = oobEl.getAttribute("hx-swap-oob");
       var strategy = "outerHTML";
-      var targetId = oobEl.id;
+      var targetSel = oobEl.id ? "#" + oobEl.id : null;
       if (oobVal && oobVal !== "true") {
         var colonIdx = oobVal.indexOf(":");
         if (colonIdx > 0) {
           strategy = oobVal.slice(0, colonIdx);
-          targetId = oobVal.slice(colonIdx + 1);
+          targetSel = oobVal.slice(colonIdx + 1);
         } else {
           strategy = oobVal;
         }
       }
-      var oobTarget = targetId ? document.getElementById(targetId) : null;
+      var oobTarget = targetSel ? document.querySelector(targetSel) : null;
       if (oobTarget) {
         fire(oobTarget, "htmx:oobBeforeSwap", { target: oobTarget, fragment: oobEl });
         oobEl.removeAttribute("hx-swap-oob");
-        doSwap(oobTarget, oobEl.outerHTML, strategy);
-        var newTarget = document.getElementById(targetId);
+        var oobHtml = strategy === "outerHTML" ? oobEl.outerHTML : oobEl.innerHTML;
+        doSwap(oobTarget, oobHtml, strategy);
+        var newTarget = document.querySelector(targetSel);
         if (newTarget) process(newTarget);
         fire(oobTarget, "htmx:oobAfterSwap", { target: oobTarget });
       } else {
-        fire(document, "htmx:oobErrorNoTarget", { id: targetId });
+        fire(document, "htmx:oobErrorNoTarget", { id: targetSel });
       }
       removed.push(oobEl);
     });
-    // Remove OOB elements from the fragment so primary swap doesn't include them
     removed.forEach(function (r) { r.remove(); });
     return tmp.innerHTML;
   }
@@ -333,15 +332,14 @@
   function processSelectOOB(el, html) {
     var selectOob = el.getAttribute("hx-select-oob");
     if (!selectOob) return html;
-    var tmp = document.createElement("template");
+    var tmp = document.createElement("div");
     tmp.innerHTML = html;
-    var frag = tmp.content;
     selectOob.split(",").forEach(function (spec) {
       spec = spec.trim();
       var parts = spec.split(":");
       var sel = parts[0].trim();
       var targetSel = parts[1] ? parts[1].trim() : sel;
-      var selected = frag.querySelector(sel);
+      var selected = tmp.querySelector(sel);
       var oobTarget = document.querySelector(targetSel);
       if (selected && oobTarget) {
         doSwap(oobTarget, selected.outerHTML, "innerHTML");
@@ -734,9 +732,9 @@
 
         // hx-select: extract portion of response
         if (selectSel) {
-          var tmp = document.createElement("template");
+          var tmp = document.createElement("div");
           tmp.innerHTML = html;
-          var selected = tmp.content.querySelector(selectSel);
+          var selected = tmp.querySelector(selectSel);
           html = selected ? selected.outerHTML : html;
         }
 

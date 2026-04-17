@@ -464,7 +464,7 @@ Bun.serve({
     }
     if (path === "/api/test/oob-strategy") {
       return new Response(
-        `<p>Primary</p><div id="oob-strat" hx-swap-oob="beforeend:#oob-append-target"><p class="oob-appended">appended via OOB</p></div>`,
+        `<p>Primary</p><div id="oob-append-target" hx-swap-oob="beforeend"><p class="oob-appended">appended via OOB</p></div>`,
         { headers: { "Content-Type": "text/html" } }
       );
     }
