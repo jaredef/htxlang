@@ -38,7 +38,17 @@ function renderMarkdown(md: string): string {
   return html;
 }
 
+const ogImageMap: Record<string, string> = {
+  "/": "home", "/spec": "spec", "/spec/composition": "composition",
+  "/spec/implementation": "implementation", "/seed": "seed",
+  "/engines/ts": "engine-ts", "/engines/go": "engine-go", "/engines/zig": "engine-zig",
+  "/engines/elixir": "engine-elixir", "/engines/rust": "engine-rust",
+  "/engines/c": "engine-c", "/engines/python": "engine-python",
+};
+
 function wrapHtml(title: string, body: string, currentPath: string): string {
+  const ogSlug = ogImageMap[currentPath] || "home";
+  const ogImage = `https://htxlang.org/og/${ogSlug}.png`;
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/spec", label: "Specification" },
@@ -60,6 +70,11 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
 <meta property="og:title" content="${title} — htxlang">
 <meta property="og:description" content="HTML in, pure HTML out. The bilateral boundary. Progressive layers. Resolver model.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="${ogImage}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${ogImage}">
 <script>
   (function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.setAttribute('data-theme','light')}})();
 </script>
@@ -384,7 +399,7 @@ function buildEnginePage(e: EngineInfo): string {
 Bun.serve({
   port: PORT,
   hostname: "0.0.0.0",
-  fetch(req) {
+  async fetch(req) {
     const url = new URL(req.url);
     let path = url.pathname.replace(/\/+$/, "") || "/";
 
@@ -417,6 +432,15 @@ Bun.serve({
         return new Response(wrapHtml(title, html, path), {
           headers: { "Content-Type": "text/html; charset=utf-8" },
         });
+      }
+    }
+
+    // Static files (OG images)
+    if (path.startsWith("/og/")) {
+      const filePath = join(ROOT, "public", path);
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        return new Response(file, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
       }
     }
 
