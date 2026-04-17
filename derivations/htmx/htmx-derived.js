@@ -13,6 +13,11 @@
   var VERBS = ["get", "post", "put", "patch", "delete"];
   var DEFAULT_SWAP = "innerHTML";
   var INDICATOR_CLASS = "htmx-request";
+  var SWAPPING_CLASS = "htmx-swapping";
+  var SETTLING_CLASS = "htmx-settling";
+
+  // ── Active requests per element (for hx-sync) ──
+  var activeRequests = new WeakMap();
 
   // ── C5: Default triggers per element type ──
   function defaultTrigger(el) {
@@ -37,9 +42,23 @@
     }
   }
 
-  // ── C4: Resolve target element ──
+  // ── Attribute inheritance: walk up to find inherited hx-* values ──
+  function getAttr(el, name) {
+    var val = el.getAttribute(name);
+    if (val) return val;
+    // Inherit from ancestors (htmx's inheritance model)
+    var parent = el.parentElement;
+    while (parent) {
+      val = parent.getAttribute(name);
+      if (val) return val;
+      parent = parent.parentElement;
+    }
+    return null;
+  }
+
+  // ── C4: Resolve target element (with inheritance) ──
   function resolveTarget(el) {
-    var sel = el.getAttribute("hx-target");
+    var sel = getAttr(el, "hx-target");
     if (!sel) return el;
     if (sel === "this") return el;
     if (sel.startsWith("closest ")) return el.closest(sel.slice(8));
@@ -74,10 +93,33 @@
     try { return JSON.parse(raw); } catch (e) { return {}; }
   }
 
+  // ── Check if form contains file inputs ──
+  function hasFileInput(el) {
+    var form = el.tagName === "FORM" ? el : el.closest("form");
+    return form ? form.querySelector('input[type="file"]') !== null : false;
+  }
+
   // ── Fire custom event ──
   function fire(el, name, detail) {
     var evt = new CustomEvent(name, { bubbles: true, cancelable: true, detail: detail || {} });
     return el.dispatchEvent(evt);
+  }
+
+  // ── Fire HX-Trigger events from response header ──
+  function fireServerTriggers(el, headerVal) {
+    if (!headerVal) return;
+    try {
+      // HX-Trigger can be: "event1" or "event1, event2" or {"event1": {"key": "val"}}
+      var parsed = JSON.parse(headerVal);
+      Object.keys(parsed).forEach(function (name) {
+        fire(el, name, parsed[name]);
+      });
+    } catch (e) {
+      // Simple string: comma-separated event names
+      headerVal.split(",").forEach(function (name) {
+        fire(el, name.trim(), {});
+      });
+    }
   }
 
   // ── C1, C2: Issue request and swap response ──
@@ -90,11 +132,26 @@
     if (!fire(el, "htmx:beforeRequest", { elt: el, verb: verb, url: url })) return;
 
     var target = resolveTarget(el);
-    var swapStrategy = el.getAttribute("hx-swap") || DEFAULT_SWAP;
-    var selectSel = el.getAttribute("hx-select");
+    var swapStrategy = (getAttr(el, "hx-swap") || DEFAULT_SWAP).split(/\s+/)[0]; // strip modifiers for now
+    var selectSel = getAttr(el, "hx-select");
+
+    // hx-sync: request coordination
+    var syncMode = getAttr(el, "hx-sync");
+    if (syncMode) {
+      var active = activeRequests.get(el);
+      if (active) {
+        if (syncMode === "drop") return; // drop this request
+        if (syncMode === "abort" || syncMode === "abort:last") {
+          active.abort(); // abort the previous
+        }
+        // "queue" mode: we just proceed (simplified)
+      }
+    }
+    var abortController = new AbortController();
+    activeRequests.set(el, abortController);
 
     // Indicator
-    var indicatorSel = el.getAttribute("hx-indicator");
+    var indicatorSel = getAttr(el, "hx-indicator");
     var indicator = indicatorSel ? document.querySelector(indicatorSel) : el;
     indicator.classList.add(INDICATOR_CLASS);
 
@@ -115,6 +172,9 @@
     }
 
     var fetchUrl = url;
+    // hx-encoding: support file uploads via multipart/form-data
+    var encoding = getAttr(el, "hx-encoding");
+
     var fetchOpts = {
       method: verb.toUpperCase(),
       headers: Object.assign({
@@ -123,6 +183,7 @@
         "HX-Target": target && target.id ? target.id : "",
         "HX-Trigger": el.id || "",
       }, extraHeaders),
+      signal: abortController.signal,
     };
 
     if (isGet && data) {
@@ -130,12 +191,39 @@
       var sep = url.includes("?") ? "&" : "?";
       fetchUrl = url + sep + params.toString();
     } else if (!isGet && data) {
-      fetchOpts.body = data;
+      if (encoding === "multipart/form-data" || (data instanceof FormData && hasFileInput(el))) {
+        fetchOpts.body = data; // browser sets multipart Content-Type with boundary
+      } else {
+        fetchOpts.body = data;
+      }
     }
 
     fetch(fetchUrl, fetchOpts)
-      .then(function (resp) { return resp.text(); })
-      .then(function (html) {
+      .then(function (resp) {
+        // ── Response headers processing (Pin 2 seam) ──
+        var hxRedirect = resp.headers.get("HX-Redirect");
+        if (hxRedirect) { window.location.href = hxRedirect; return null; }
+        var hxRefresh = resp.headers.get("HX-Refresh");
+        if (hxRefresh === "true") { window.location.reload(); return null; }
+        // Store response headers for post-swap processing
+        resp._hxHeaders = {
+          trigger: resp.headers.get("HX-Trigger"),
+          triggerAfterSettle: resp.headers.get("HX-Trigger-After-Settle"),
+          triggerAfterSwap: resp.headers.get("HX-Trigger-After-Swap"),
+          retarget: resp.headers.get("HX-Retarget"),
+          reswap: resp.headers.get("HX-Reswap"),
+        };
+        return resp.text().then(function (text) { return { text: text, hx: resp._hxHeaders }; });
+      })
+      .then(function (result) {
+        if (!result) return; // redirect/refresh handled above
+        var html = result.text;
+        var hx = result.hx;
+
+        // HX-Retarget: server overrides the target
+        if (hx.retarget) target = document.querySelector(hx.retarget) || target;
+        // HX-Reswap: server overrides the swap strategy
+        if (hx.reswap) swapStrategy = hx.reswap.split(/\s+/)[0];
         fire(el, "htmx:afterRequest", { elt: el, xhr: null });
 
         // hx-select: extract portion of response
@@ -149,8 +237,17 @@
         // Event: beforeSwap
         if (!fire(el, "htmx:beforeSwap", { elt: el, target: target })) return;
 
+        // CSS transition: add swapping class before swap
+        if (target) target.classList.add(SWAPPING_CLASS);
+
         // C3: Swap
         swap(target, html, swapStrategy);
+
+        // CSS transition: remove swapping, add settling
+        if (target && target.classList) {
+          target.classList.remove(SWAPPING_CLASS);
+          target.classList.add(SETTLING_CLASS);
+        }
 
         // hx-push-url
         var pushUrl = el.getAttribute("hx-push-url");
@@ -164,12 +261,24 @@
           process(target);
         }
 
+        // HX-Trigger-After-Swap: fire server-requested events
+        fireServerTriggers(el, hx.triggerAfterSwap);
+
         fire(el, "htmx:afterSwap", { elt: el, target: target });
 
         // afterSettle (next tick)
         setTimeout(function () {
+          // CSS transition: remove settling class
+          if (target && target.classList) target.classList.remove(SETTLING_CLASS);
+
+          // HX-Trigger-After-Settle: fire server-requested events
+          fireServerTriggers(el, hx.triggerAfterSettle);
+
           fire(el, "htmx:afterSettle", { elt: el, target: target });
-        }, 0);
+        }, 20); // 20ms matches htmx's settle delay
+
+        // HX-Trigger: fire immediately after swap (before settle)
+        fireServerTriggers(el, hx.trigger);
       })
       .catch(function (err) {
         fire(el, "htmx:afterRequest", { elt: el, error: err });
@@ -177,6 +286,7 @@
       .finally(function () {
         indicator.classList.remove(INDICATOR_CLASS);
         disabledEls.forEach(function (de) { de.disabled = false; });
+        activeRequests.delete(el);
       });
   }
 
