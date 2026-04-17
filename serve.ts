@@ -22,6 +22,8 @@ const linkRewrites: Record<string, string> = {
   "../seed/presto-seed.md": "/seed",
   "../seed/server-seed.md": "/seed/server",
   "README.md": "/",
+  "derivations/htmx/HTMX-SEED.md": "/seed/htmx",
+  "HTMX-SEED.md": "/seed/htmx",
 };
 
 function renderMarkdown(md: string): string {
@@ -285,6 +287,7 @@ const mdRoutes: Record<string, string> = {
   "/spec/composition": "spec/composition.md",
   "/seed": "seed/presto-seed.md",
   "/seed/server": "seed/server-seed.md",
+  "/seed/htmx": "derivations/htmx/HTMX-SEED.md",
   "/docs/architecture": "docs/architecture.md",
   "/docs/thinking": "docs/thinking-in-presto.md",
 };
