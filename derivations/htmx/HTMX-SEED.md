@@ -344,8 +344,8 @@ Every request MUST include:
 1. If `document.readyState` is `"loading"`, wait for `DOMContentLoaded`; otherwise call `init()` immediately.
 2. `init()`: load config from `<meta name="htmx-config">`, initialize history (popstate listener), inject indicator styles if configured, process `document.body`.
 3. Processing MUST be idempotent — track a per-element flag to prevent re-attaching triggers on re-processing.
-4. Processing: scan for `hx-get/post/put/patch/delete` attributes, attach triggers. Scan for `hx-boost="true"`, boost contained links and forms. Process `hx-on:*` handlers. Initialize `sse-connect` and `ws-connect` elements.
-5. After every swap: re-process the swapped content, evaluate scripts, process `hx-on:*`, initialize SSE/WS.
+4. Processing: scan for `hx-get/post/put/patch/delete` attributes, attach triggers. Scan for `hx-boost="true"`, boost contained links and forms. Initialize `sse-connect` and `ws-connect` elements. The initial `process(document.body)` call MUST NOT evaluate scripts or bind `hx-on:*` handlers — these only run on swapped content.
+5. After every swap: re-process the swapped content, THEN evaluate scripts (`processScripts`), THEN process `hx-on:*` handlers, THEN initialize SSE/WS. Script re-execution and `hx-on:*` binding are swap-only operations, never called during `init()`.
 
 ## Sync
 
