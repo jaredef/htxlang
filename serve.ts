@@ -21,9 +21,9 @@ function wrapHtml(title: string, body: string, currentPath: string): string {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/spec", label: "Specification" },
+    { href: "/spec/composition", label: "Composition" },
     { href: "/spec/implementation", label: "Implementation" },
-    { href: "/spec/reference-profile", label: "Reference Profile" },
-    { href: "/seed", label: "Seed" },
+    { href: "/seed", label: "Seeds" },
   ];
   const navHtml = navLinks.map(l =>
     `<a href="${l.href}" class="nav-link${currentPath === l.href ? ' nav-active' : ''}">${l.label}</a>`
@@ -246,7 +246,9 @@ const mdRoutes: Record<string, string> = {
   "/spec/plan": "spec/plan.md",
   "/spec/implementation": "spec/implementation.md",
   "/spec/reference-profile": "spec/reference-profile.md",
+  "/spec/composition": "spec/composition.md",
   "/seed": "seed/presto-seed.md",
+  "/seed/server": "seed/server-seed.md",
   "/docs/architecture": "docs/architecture.md",
   "/docs/thinking": "docs/thinking-in-presto.md",
 };
