@@ -183,9 +183,18 @@
   // ── C5: Parse trigger string ──
   function parseTrigger(el) {
     var raw = el.getAttribute("hx-trigger") || defaultTrigger(el);
-    var parts = raw.split(/\s+/);
+    // Handle comma-separated triggers (e.g., "load, every 2s")
+    var triggers = raw.split(",").map(function (s) { return s.trim(); });
+    var primary = triggers[0];
+    var parts = primary.split(/\s+/);
     var event = parts[0];
-    var mods = { once: false, changed: false, delay: 0, throttle: 0, from: null };
+    var mods = { once: false, changed: false, delay: 0, throttle: 0, from: null, every: 0 };
+
+    // Check for "every Ns" in any trigger segment
+    triggers.forEach(function (t) {
+      var m = t.match(/every\s+(\d+)(ms|s)/);
+      if (m) mods.every = parseInt(m[1]) * (m[2] === "s" ? 1000 : 1);
+    });
 
     for (var i = 1; i < parts.length; i++) {
       if (parts[i] === "once") mods.once = true;
@@ -211,6 +220,11 @@
     if (trigger.event === "load") {
       issueRequest(el, verb, url);
       return;
+    }
+
+    // Polling: "every Ns"
+    if (trigger.mods.every > 0) {
+      setInterval(function () { issueRequest(el, verb, url); }, trigger.mods.every);
     }
 
     if (trigger.event === "revealed") {

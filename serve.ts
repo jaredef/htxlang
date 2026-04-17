@@ -406,6 +406,82 @@ Bun.serve({
     const url = new URL(req.url);
     let path = url.pathname.replace(/\/+$/, "") || "/";
 
+    // ── Demo API endpoints (return HTML fragments for htmx-derived.js) ──
+    if (path === "/api/demo/hello") {
+      return new Response(`<p style="color:var(--accent);font-weight:600;">It works! This HTML fragment was fetched via htmx-derived.js and swapped into the DOM. No JSON. No framework. Just HTML.</p>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/demo/time") {
+      return new Response(`<span>${new Date().toLocaleTimeString()}</span>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/demo/counter") {
+      const count = parseInt(url.searchParams.get("n") || "0") + 1;
+      return new Response(`<div id="counter"><span style="font-size:2rem;font-weight:700;color:var(--accent);">${count}</span><br><button hx-get="/api/demo/counter?n=${count}" hx-target="#counter" hx-swap="outerHTML">Click: ${count}</button></div>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/demo/search") {
+      const q = (url.searchParams.get("q") || "").toLowerCase();
+      const items = ["Bilateral Boundary", "Progressive Layers", "Resolver Model", "Derivation Inversion", "ENTRACE Stack", "Hypostatic Boundary", "Constraint Density", "SIPE Law"];
+      const results = q ? items.filter(i => i.toLowerCase().includes(q)) : [];
+      const html = results.length ? results.map(r => `<li>${r}</li>`).join("") : (q ? "<li>No results</li>" : "");
+      return new Response(`<ul>${html}</ul>`, { headers: { "Content-Type": "text/html" } });
+    }
+    if (path === "/api/demo/form" && req.method === "POST") {
+      const fd = await req.formData();
+      const name = fd.get("name") || "stranger";
+      return new Response(`<p style="color:var(--accent);">Hello, <strong>${name}</strong>! This was a POST request. The form data was sent as FormData and the response is an HTML fragment.</p>`, { headers: { "Content-Type": "text/html" } });
+    }
+
+    // ── Demo page ──
+    if (path === "/demo/htmx") {
+      const demoHtml = `
+        <p class="breadcrumb"><a href="/">htxlang</a> → <a href="/seed/htmx">HTMX Seed</a> → Demo</p>
+        <h1>htmx-derived.js — Live Demo</h1>
+        <p>This page uses <a href="/derivations/htmx/htmx-derived.js">htmx-derived.js</a> (332 lines, 10KB) — not htmx.org. Same <code>hx-*</code> namespace. Drop-in replacement. <a href="/seed/htmx">Read the seed →</a></p>
+
+        <h2>1. Basic GET + Swap</h2>
+        <p>Click the button. It fires <code>hx-get</code>, fetches an HTML fragment, and swaps it into the target.</p>
+        <button hx-get="/api/demo/hello" hx-target="#demo-hello" hx-swap="innerHTML" style="padding:0.5rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;">
+          Fetch HTML
+        </button>
+        <div id="demo-hello" style="margin:1rem 0;padding:1rem;border:1px solid var(--border-subtle);border-radius:4px;min-height:2rem;">
+          <span style="color:var(--text-dim);">Response will appear here</span>
+        </div>
+
+        <h2>2. Self-Replacing Counter</h2>
+        <p>Each click fetches a new fragment that replaces the entire counter via <code>hx-swap="outerHTML"</code>. The new fragment contains the next button — dynamic content with hx-* attributes, auto-processed after swap.</p>
+        <div id="counter">
+          <span style="font-size:2rem;font-weight:700;color:var(--accent);">0</span><br>
+          <button hx-get="/api/demo/counter?n=0" hx-target="#counter" hx-swap="outerHTML" style="padding:0.5rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;margin-top:0.5rem;">Click: 0</button>
+        </div>
+
+        <h2>3. Live Search (Debounced)</h2>
+        <p>Type to search. Uses <code>hx-trigger="keyup changed delay:300ms"</code> — debounces 300ms, only fires when the value actually changes.</p>
+        <input type="text" name="q" placeholder="Search concepts..."
+          hx-get="/api/demo/search" hx-target="#search-results" hx-trigger="keyup changed delay:300ms"
+          style="width:100%;padding:0.5rem;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.9rem;" />
+        <div id="search-results" style="margin:0.5rem 0;min-height:1.5rem;"></div>
+
+        <h2>4. Form POST</h2>
+        <p>Submit the form. Uses <code>hx-post</code> to send FormData and swap the response.</p>
+        <form hx-post="/api/demo/form" hx-target="#form-result" hx-swap="innerHTML" style="display:flex;gap:0.5rem;margin:0.5rem 0;">
+          <input type="text" name="name" placeholder="Your name" style="flex:1;padding:0.5rem;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;font-family:inherit;" />
+          <button type="submit" style="padding:0.5rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;">Send</button>
+        </form>
+        <div id="form-result" style="margin:0.5rem 0;min-height:1.5rem;"></div>
+
+        <h2>5. Polling (Auto-refresh)</h2>
+        <p>The time below refreshes every 2 seconds via <code>hx-trigger="load, every 2s"</code>.</p>
+        <div hx-get="/api/demo/time" hx-trigger="load, every 2s" hx-swap="innerHTML" style="font-size:1.5rem;font-weight:600;color:var(--accent);padding:0.5rem 0;"></div>
+
+        <hr>
+        <p style="color:var(--text-dim);font-size:0.85rem;">
+          Powered by <a href="/derivations/htmx/htmx-derived.js">htmx-derived.js</a> — 332 lines derived from the <a href="/seed/htmx">HTMX Constraint Seed</a>. View <a href="https://github.com/jaredef/htxlang/tree/main/derivations/htmx">source on GitHub</a>.
+        </p>
+      `;
+      const page = wrapHtml("htmx-derived.js Demo", demoHtml, path)
+        .replace("</head>", `<script src="/derivations/htmx/htmx-derived.js"></script>\n</head>`);
+      return new Response(page, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+
     // Landing page
     if (path === "/") {
       return new Response(wrapHtml("htxlang", buildLandingPage(), path), {

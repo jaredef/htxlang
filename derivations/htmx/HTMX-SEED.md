@@ -2,6 +2,10 @@
 
 Self-contained specification for a drop-in hypermedia interaction library. Implements the same `hx-*` attribute namespace as htmx.org. A resolver consuming this seed derives a conformant implementation in JavaScript.
 
+**Derived implementation:** [htmx-derived.js](/derivations/htmx/htmx-derived.js) — 332 lines, 10KB (vs htmx.min.js at 51KB). Drop-in replacement, same namespace.
+
+**Live demo:** [Try it →](/demo/htmx)
+
 ## Identity
 
 You are building a client-side JavaScript library that enables any HTML element to issue HTTP requests and swap the response into the DOM. The library is declarative — behavior is specified via HTML attributes, not JavaScript. The library is a drop-in replacement for htmx.js using the same `hx-*` attribute namespace.
