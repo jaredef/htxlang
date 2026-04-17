@@ -14,9 +14,9 @@ You are building a client-side JavaScript library that enables any HTML element 
 
 ## Implementation Style
 
-Use the browser's **FormData API** for all parameter collection and serialization. Use `new FormData(form)` to gather inputs, `FormData.append()` for hx-vals and hx-include, `new URLSearchParams(fd)` for GET query strings and url-encoded POST bodies. Do not manually walk input elements.
+Use the browser's **FormData API** for all parameter collection and serialization. Use `new FormData(form)` to gather inputs, `FormData.append()` for hx-vals and hx-include, `new URLSearchParams(fd)` for GET query strings and url-encoded POST bodies. Do not manually walk input elements. The `hx-include` attribute takes a simple CSS selector resolved via `document.querySelectorAll`; do not implement extended selector resolution (closest, find, next, previous) for include targets.
 
-Process elements by querying for each verb selector separately (`querySelectorAll('[hx-get]')`, etc.) plus `[hx-boost='true']`, `[sse-connect]`, `[ws-connect]`. Do not iterate all descendants with `querySelectorAll('*')`. Implement boost as a separate function.
+Process elements by querying for each verb selector separately (`querySelectorAll('[hx-get]')`, etc.) plus `[hx-boost='true']`, `[sse-connect]`, `[ws-connect]`. Do not iterate all descendants with `querySelectorAll('*')`. Boost scanning happens inline inside the `process` function. Implement boost as a single `boost(container)` function that handles both links and forms, not split into separate functions.
 
 Implement `doSwap` as a simple switch statement using `target.innerHTML`, `target.outerHTML`, `target.insertAdjacentHTML`, and `target.remove()`. Do not track inserted elements in a settleInfo object.
 
@@ -26,7 +26,19 @@ For OOB swap processing, parse into a temporary `<div>`, extract OOB elements, r
 
 Implement `hx-preserve` inline within the swap function; do not create separate preserve/restore helpers.
 
-For `hx-on:*` processing, check only `hx-on:` and `hx-on::` prefixes. Do not implement `data-hx-*` prefix fallback. Do not add DOM-presence polling intervals for SSE/WS cleanup.
+For `hx-on:*` processing, iterate `querySelectorAll('*')` and check each element's attributes for `hx-on:` prefixes. Attach handlers directly with `new Function`. Do not add duplicate-prevention maps, separate attribute queries, or IIFE closures. Check only `hx-on:` and `hx-on::` prefixes. Do not implement `data-hx-*` prefix fallback.
+
+Do not add MutationObservers or DOM-presence polling for SSE/WS cleanup.
+
+**Inline, don't extract:** Target resolution, indicator style injection, history element lookup, and sync mode checking are all inlined at call sites — do not create `getTarget`, `injectIndicatorStyles`, `getHistoryElt`, or `resolveSync` wrapper functions. Extension `onEvent` hooks are called inside the `fire()` function body, not through separate helpers.
+
+The `htmx:configRequest` event receives the FormData directly in `detail.parameters` — do not convert to a plain object before the event or rebuild afterward.
+
+History cache-miss recovery uses `fetch()` and writes `response.text()` directly into the history element — no XMLHttpRequest, no `<body>` tag extraction.
+
+URL history management has exactly two branches: one for push-url and one for replace-url, with server headers taking precedence over attributes.
+
+Logger is a plain property on the `window.htmx` object (`logger: null`), not a variable with `Object.defineProperty`. Title extraction uses regex with `.trim()` only — no HTML entity decoding.
 
 ---
 
