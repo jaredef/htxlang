@@ -216,15 +216,16 @@
     var listenTarget = trigger.mods.from ? document.querySelector(trigger.mods.from) : el;
     if (!listenTarget) return;
 
+    // Polling: "every Ns" — set up BEFORE early returns
+    if (trigger.mods.every > 0) {
+      setInterval(function () { issueRequest(el, verb, url); }, trigger.mods.every);
+    }
+
     // Special triggers
     if (trigger.event === "load") {
       issueRequest(el, verb, url);
+      if (!trigger.mods.every) return; // only return early if no polling
       return;
-    }
-
-    // Polling: "every Ns"
-    if (trigger.mods.every > 0) {
-      setInterval(function () { issueRequest(el, verb, url); }, trigger.mods.every);
     }
 
     if (trigger.event === "revealed") {
